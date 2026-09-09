@@ -4,6 +4,21 @@ import { fetchHistory, saveHistory, streamSearch, streamSync, fetchActiveJobs, l
 import { dom, resetToHome, showSearchState, updateLog, showError, renderResults, renderHistoryList, renderSyncProgress } from './ui.js';
 lucide.createIcons();
 
+const savedTheme = localStorage.getItem('snoopy_theme');
+if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    // Força a atualização visual do botão se a UI já estiver montada
+    window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btn-theme-toggle');
+        if (btn) {
+            btn.innerHTML = `
+                <i data-lucide="sun" class="icon-sm"></i>
+                <span class="nav-title" style="font-size: 0.85rem;">Tema</span>
+            `;
+            lucide.createIcons();
+        }
+    });
+}
 
 // 2. ESTADO LOCAL DE EXECUÇÃO 
 let isSearching = false;
@@ -131,10 +146,25 @@ dom.mobileOverlay?.addEventListener('click', () => {
 
 if (dom.btnCloseEvidence) {
     dom.btnCloseEvidence.addEventListener('click', () => {
-        dom.layoutGrid.classList.remove('evidence-active');
-        dom.mobileOverlay.classList.remove('active');
+        // Se a URL tem o hash, volta o histórico do navegador (que aciona o popstate acima)
+        if (window.location.hash === '#evidencia') {
+            history.back();
+        } else {
+            // Fallback de segurança
+            dom.layoutGrid.classList.remove('evidence-active');
+            dom.mobileOverlay.classList.remove('active');
+        }
     });
 }
+
+dom.btnCloseReading?.addEventListener('click', () => {
+    if (window.location.hash === '#leitura') {
+        history.back();
+    } else {
+        dom.readingView.classList.remove('active');
+        dom.resultView.classList.add('active');
+    }
+});
 
 // Toggle da Sidebar (Desktop vs Mobile)
 dom.sidebarToggle.addEventListener('click', () => {
@@ -149,6 +179,7 @@ dom.sidebarToggle.addEventListener('click', () => {
 // Alternador de Tema (Light/Dark)
 document.getElementById('btn-theme-toggle').addEventListener('click', () => {
     const isLight = document.body.classList.toggle('light-theme');
+    localStorage.setItem('snoopy_theme', isLight ? 'light' : 'dark');
     const btn = document.getElementById('btn-theme-toggle');
     if (btn) {
         btn.innerHTML = `
@@ -301,4 +332,19 @@ dom.readingView?.addEventListener('scroll', () => {
     }
     
     lastScrollTop = currentScroll;
+});
+
+// --- CONTROLE DO BOTÃO VOLTAR (HISTORY API) ---
+window.addEventListener('popstate', () => {
+    // Se saiu da URL #leitura, fecha o Modo Leitura
+    if (dom.readingView.classList.contains('active') && window.location.hash !== '#leitura') {
+        dom.readingView.classList.remove('active');
+        dom.resultView.classList.add('active');
+    }
+    
+    // Se saiu da URL #evidencia, fecha a gaveta de trechos
+    if (dom.layoutGrid.classList.contains('evidence-active') && window.location.hash !== '#evidencia') {
+        dom.layoutGrid.classList.remove('evidence-active');
+        dom.mobileOverlay.classList.remove('active');
+    }
 });

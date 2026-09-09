@@ -185,6 +185,7 @@ let formattedAnswer = data.answer.replace(/\[([^\]]*TRECHO[^\]]*)\]/gi, (match) 
                 
                 dom.resultView.classList.remove('active');
                 dom.readingView.classList.add('active');
+                history.pushState({ view: 'leitura' }, '', '#leitura');
                 
                 dom.mobileOverlay.classList.remove('active');
                 dom.readingTitle.textContent = fonteOriginal.titulo;
@@ -375,6 +376,7 @@ let formattedAnswer = data.answer.replace(/\[([^\]]*TRECHO[^\]]*)\]/gi, (match) 
             dom.sidebar.classList.add('collapsed');
             dom.layoutGrid.classList.add('evidence-active');
             dom.mobileOverlay.classList.add('active');
+            history.pushState({ view: 'evidencia' }, '', '#evidencia');
 
             document.querySelectorAll('.chunk-card').forEach(c => {
                 if (c.dataset.num === numeroTrecho) {

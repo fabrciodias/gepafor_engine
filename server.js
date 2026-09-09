@@ -1,3 +1,4 @@
+// Tá foda, cara. PQP github
 // 1. DEPENDÊNCIAS E IMPORTAÇÕES
 require('dotenv').config({ override: true });
 const express = require('express');
@@ -16,6 +17,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_LLM_MODEL = process.env.GEMINI_LLM_MODEL || 'gemini-2.5-flash';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: {
@@ -81,7 +83,14 @@ app.post('/api/search', async (req, res) => {
 
     // Acionamento do Motor Python In-Memory
     console.log(`[MOTOR V2] Usuário ${userId} pesquisando: "${query}" no Acervo: ${folder_id}`);
-    const pythonProcess = spawn('./.venv/bin/python3', ['src/search.py', query, userId, folder_id, GEMINI_API_KEY]);
+
+    const pythonWinPath = path.join(__dirname, '.venv', 'Scripts', 'python.exe');
+    const pythonNixPath = path.join(__dirname, '.venv', 'bin', 'python3');
+    const pythonExec = fs.existsSync(pythonWinPath) ? pythonWinPath : pythonNixPath;
+    const pythonProcess = spawn(pythonExec, ['src/search.py', query, userId, folder_id, GEMINI_API_KEY], {
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+    });
+        
     let rawOutput = '';
 
     // Captura da Saída Padrão 
@@ -195,64 +204,70 @@ app.post('/api/sync', async (req, res) => {
         const newFiles = googleFiles.filter(f => !processedFileId.has(f.id) && !queuedFileId.has(f.id));
         console.log(`[SYNC] Filtro aplicado. Arquivos novos: ${newFiles.length}`);
 
+        // --- BLOCO 1: SE NÃO TIVER ARQUIVO NOVO, ENCERRA AQUI ---
         if (newFiles.length === 0) {
             sendLog("Sincronização concluída. O acervo já está atualizado.");
             res.write(`data: ${JSON.stringify({ type: 'result', status: 'up-to-date' })}\n\n`);
             return res.end();
         }
 
-        sendLog(`Encontrado ${newFiles.length} novo(s) arquivo(s). Preparando fila...`);
+        // --- BLOCO 2: SE TIVER ARQUIVO NOVO, LIBERA O FRONT E RODA EM BACKGROUND ---
+        sendLog(`Encontrado ${newFiles.length} novo(s) arquivo(s). Iniciando download em segundo plano...`);
         
-        for (let i = 0; i < newFiles.length; i++) {
-            const file = newFiles[i];
-            const currentIdx = i + 1;
-
-            try { 
-                console.log(`[SYNC] Baixando ${currentIdx}/${newFiles.length}: ${file.name}`);
-                sendLog(`[${currentIdx}/${newFiles.length}] Baixando e registrando: "${file.name}"...`);
-                
-                const downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`;
-                const downloadRes = await fetch(downloadUrl, {
-                    headers: { 'Authorization': `Bearer ${google_token}` }
-                });
-
-                if (!downloadRes.ok) throw new Error(`Falha na rede (HTTP ${downloadRes.status})`);
-
-                const arrayBuffer = await downloadRes.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
-
-                const tempDir = path.join(__dirname, 'data', 'raw_pdfs');
-                if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-                const tempPath = path.join(tempDir, `${file.id}.pdf`);
-                fs.writeFileSync(tempPath, buffer);
-
-                const { error: jobError } = await supabase.from('jobs').insert([{
-                    user_id: userId,
-                    folder_id: folder_id,
-                    file_name: file.name,
-                    drive_file_id: file.id,
-                    status: 'pending'
-                }]);
-
-                if (jobError) throw jobError;
-                console.log(`[SYNC] Arquivo ${file.name} inserido na tabela jobs com sucesso.`);
-
-            } catch (err) { 
-                sendLog(`[AVISO] Falha ao capturar "${file.name}". Pulando para o próximo.`);
-                console.error(`[SYNC ERRO] Falha no arquivo ${file.name}:`, err);
-            }
-        }
-        
-        console.log("[FIM SYNC] Todos os arquivos enfileirados");
-        sendLog("Arquivos adicionados à fila do Motor Semântico com sucesso!");
+        // Libera o Frontend imediatamente
         res.write(`data: ${JSON.stringify({ type: 'result', status: 'success' })}\n\n`);
         res.end();
+        console.log(`[SYNC] Conexão HTTP encerrada. Iniciando processamento de ${newFiles.length} arquivos no background.`);
+
+        // Função Assíncrona Desacoplada
+        (async () => {
+            for (let i = 0; i < newFiles.length; i++) {
+                const file = newFiles[i];
+                const currentIdx = i + 1;
+
+                try {
+                    console.log(`[SYNC BACKGROUND] Baixando ${currentIdx}/${newFiles.length}: ${file.name}`);
+                    
+                    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`;
+                    const downloadRes = await fetch(downloadUrl, {
+                        headers: { 'Authorization': `Bearer ${google_token}` }
+                    });
+
+                    if (!downloadRes.ok) throw new Error(`Falha na rede (HTTP ${downloadRes.status})`);
+
+                    const arrayBuffer = await downloadRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+
+                    const tempDir = path.join(__dirname, 'data', 'raw_pdfs');
+                    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+                    const tempPath = path.join(tempDir, `${file.id}.pdf`);
+                    fs.writeFileSync(tempPath, buffer);
+
+                    const { error: jobError } = await supabase.from('jobs').insert([{
+                        user_id: userId,
+                        folder_id: folder_id,
+                        file_name: file.name,
+                        drive_file_id: file.id,
+                        status: 'pending'
+                    }]);
+
+                    if (jobError) throw jobError;
+                    console.log(`[SYNC BACKGROUND] Arquivo ${file.name} inserido na tabela jobs com sucesso.`);
+
+                } catch (err) {
+                    console.error(`[SYNC BACKGROUND ERRO] Falha no arquivo ${file.name}:`, err);
+                }
+            }
+            console.log("[FIM SYNC BACKGROUND] Todos os arquivos da fila foram processados.");
+        })();   
 
     } catch (error) {
         console.error("[ERRO CRÍTICO NO SYNC]:", error);
-        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
-        res.end();
+        if (!res.writableEnded) {
+            res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+            res.end();
+        }
     }
 });
 
@@ -332,8 +347,8 @@ Retorne APENAS o texto traduzido limpo, sem comentários ou aspas extras.
 TEXTO ORIGINAL:
 ${text}`;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-        
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_LLM_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -359,7 +374,7 @@ ${text}`;
 });
 
 // 7. INICIALIZAÇÃO DO SERVIDOR
-const PORT = 3000;
+const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n=========================================`);
     console.log(`SNOOPY-RAG V2 (SaaS) ATIVADO`);

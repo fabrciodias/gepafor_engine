@@ -14,7 +14,7 @@
 
     /* Identidade Visual (Verde Sálvia) */
     --primary: #6a8465;
-    --primary-hover: #7b9976;
+    --primary-hover: #546a51;
 
     /* Box Model e Espaçamentos */
     --space-xs: 4px;
@@ -48,7 +48,7 @@ body.light-theme {
     --border-color: #e5e7eb;
 
     --primary: #4b6347; 
-    --primary-hover: #3c4f39;
+    --primary-hover: #374a34;
 }
 
 * { 
