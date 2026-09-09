@@ -14,6 +14,9 @@ load_dotenv()
 if "GOOGLE_API_KEY" in os.environ:
     del os.environ["GOOGLE_API_KEY"]
 
+GEMINI_LLM_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.5-flash")
+GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "text-multilingual-embedding-002")
+
 # Silencia logs barulhentos das bibliotecas HTTP para não poluir o Node.js
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("google_genai").setLevel(logging.WARNING)
@@ -46,7 +49,7 @@ def decompose_query(query, client):
     """
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model= GEMINI_LLM_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -80,9 +83,8 @@ def init_search(search_query, user_id, folder_id, gemini_api_key):
     ui_log(f"Escaneando o acervo em busca de respostas...")
     for q in queries:
         try:
-            # MODELO ATUALIZADO
             response = client.models.embed_content(
-                model='gemini-embedding-2',
+                model= GEMINI_EMBEDDING_MODEL,
                 contents=q,
                 config=types.EmbedContentConfig(output_dimensionality=768)
             )
@@ -172,7 +174,7 @@ def init_search(search_query, user_id, folder_id, gemini_api_key):
         
     try:
         llm_response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model= GEMINI_LLM_MODEL,
             contents=prompt_rag,
             config=types.GenerateContentConfig(
                 temperature=0.1

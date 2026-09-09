@@ -35,9 +35,6 @@
             
             <div class="sidebar-middle">
                 <div id="auth-section" class="auth-box">
-                    <button id="btn-login" class="btn-primary-full w-full hidden">
-                        <i data-lucide="log-in" class="icon-sm"></i> Entrar
-                    </button>
                     <div id="folder-container" class="folder-box hidden" style="display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <span class="folder-label" style="margin-bottom: 0; line-height: 1;">Acervo Atual</span>
@@ -85,9 +82,13 @@
                     <i data-lucide="moon" class="icon-sm"></i>
                     <span class="nav-title" style="font-size: 0.85rem;">Tema</span>
                 </button>
+
+                <button id="btn-login" class="btn-primary-full hidden" style="padding: 10px 12px; margin-top: 4px; min-height: 44px;">
+                    <i data-lucide="log-in" class="icon-sm"></i>
+                    <span style="font-size: 0.85rem; font-weight: 500;">Entrar</span>
+                </button>
                 
                 <div id="user-info" class="user-profile hidden" style="display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-app); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-        
                     <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
                         <img id="user-avatar" src="" alt="Avatar" class="avatar-img">
                         <span class="user-name" style="font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Usuário</span>

@@ -25,6 +25,7 @@ if "GOOGLE_API_KEY" in os.environ:
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "text-multilingual-embedding-002")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
@@ -94,7 +95,7 @@ def memory_process(file_path, file_id, user_id, folder_id, drive_link=""):
             for attempt in range(max_retries):
                 try:
                     response = gemini_client.models.embed_content(
-                        model='gemini-embedding-2',
+                        model=GEMINI_EMBEDDING_MODEL,
                         contents=texts,
                         config=types.EmbedContentConfig(output_dimensionality=768)            
                     )

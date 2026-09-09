@@ -1,6 +1,9 @@
 import json
 import sys
+import os
 from google.genai import types
+
+GEMINI_LLM_MODEL = os.environ.get("GEMINI_LLM_MODEL", "gemini-3.5-flash")
 
 def get_metadata(markdown_text, client):
     prompt = f"""
@@ -27,7 +30,7 @@ def get_metadata(markdown_text, client):
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model= GEMINI_LLM_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
