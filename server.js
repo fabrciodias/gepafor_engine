@@ -1,3 +1,4 @@
+// Tá foda, cara. PQP github
 // 1. DEPENDÊNCIAS E IMPORTAÇÕES
 require('dotenv').config({ override: true });
 const express = require('express');
